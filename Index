@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Liofilchem Easy RID - Analizzatore Piastre</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<script>
+tailwind.config={darkMode:'class',theme:{extend:{fontFamily:{sans:['Inter','sans-serif']}}}}
+</script>
+<style type="text/tailwindcss">
+@layer components{
+ .card{@apply bg-slate-800/60 border border-slate-700/80 rounded-xl p-5 shadow-lg}
+ .inp{@apply w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-sm text-slate-100 focus:outline-none focus:border-teal-500}
+ .btn{@apply py-3 rounded-xl text-xs font-medium flex items-center justify-center gap-2 transition bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 cursor-pointer}
+ .btn-p{@apply py-3 rounded-xl text-xs font-semibold flex items-center justify-center gap-2 transition bg-teal-600 hover:bg-teal-500 text-white shadow-lg disabled:opacity-50}
+ .tab{@apply flex-1 py-2.5 text-center transition flex items-center justify-center gap-1.5 opacity-60}
+ .tab.on{@apply opacity-100 text-teal-400 font-semibold border-b-4 border-teal-600}
+ .box{@apply p-3 bg-slate-900/60 rounded-lg border border-slate-700/60 text-xs}
+}
+</style>
+<style>
+body{touch-action:manipulation;-webkit-user-select:none;user-select:none}
+input,textarea,select{-webkit-user-select:text;user-select:text}
+canvas{touch-action:none}
+.glass{background:rgba(15,23,42,.75);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)}
+@media print{
+ body *{visibility:hidden}
+ #report-card,#report-card *{visibility:visible}
+ #report-card{position:absolute;inset:0;background:#fff!important;color:#000!important;border:0}
+ #report-card *{color:#000!important;background:transparent!important;border-color:#999!important}
+}
+</style>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen flex flex-col font-sans">
+
+<header class="bg-slate-800 border-b border-slate-700 sticky top-0 z-50 shadow-md">
+ <div class="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between">
+  <div class="flex items-center gap-3">
+   <div class="w-9 h-9 rounded-lg bg-teal-500/20 border border-teal-500/40 flex items-center justify-center text-teal-400 text-xl"><i class="fa-solid fa-circle-dot"></i></div>
+   <div><h1 class="text-base font-bold leading-tight">Easy RID Reader</h1><p class="text-xs text-slate-400">Analisi Immunodiffusione Radiale</p></div>
+  </div>
+  <button id="reset-app-btn" class="text-xs px-2.5 py-1.5 rounded-lg bg-slate-700 hover:bg-slate-600 text-slate-300"><i class="fa-solid fa-rotate-right mr-1"></i>Reset</button>
+ </div>
+ <nav id="tabs" class="flex border-t border-slate-700 bg-slate-800/80 text-xs sm:text-sm font-medium text-slate-400 max-w-4xl mx-auto"></nav>
+</header>
+
+<main class="flex-1 max-w-4xl w-full mx-auto p-4">
+
+<!-- STEP 1 -->
+<section id="step-1" class="space-y-5">
+ <div class="card space-y-4">
+  <h2 class="text-base font-semibold flex items-center gap-2"><i class="fa-solid fa-flask-vial text-teal-400"></i>1. Selezione test Liofilchem®</h2>
+  <div class="p-3 bg-amber-500/10 border border-amber-500/30 rounded-lg text-[11px] text-amber-200 leading-snug">
+   <i class="fa-solid fa-triangle-exclamation mr-1"></i><strong>Fonte dati:</strong> foglietto illustrativo Liofilchem F02013 Rev.6 (11.07.2006), tabelle dei valori di riferimento Easy RID Multiplate. I valori non dipendono dal lotto. Campione 5 µL per pozzetto, lettura dopo 48 h.
+  </div>
+  <div><label class="block text-xs text-slate-300 mb-1">Kit / test RID</label><select id="preset-select" class="inp"></select></div>
+  <div class="box space-y-1.5">
+   <div class="flex justify-between"><span class="text-slate-400">Colore gel:</span><span id="info-gel" class="text-slate-200 font-medium"></span></div>
+   <div class="flex justify-between"><span class="text-slate-400">Diluizione campione:</span><span id="info-dil" class="text-teal-400 font-semibold"></span></div>
+   <div class="flex justify-between"><span class="text-slate-400">Range della tabella PI:</span><span id="info-range" class="text-slate-300"></span></div>
+   <div class="flex justify-between"><span class="text-slate-400">Valori normali adulti (PI):</span><span id="info-normal" class="text-slate-300"></span></div>
+  </div>
+  <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+   <div><label class="block text-xs text-slate-300 mb-1">ID campione / paziente</label><input id="sample-id" class="inp" placeholder="Es. CAMP-2026-001"></div>
+   <div><label class="block text-xs text-slate-300 mb-1">Numero pozzetto</label><input type="number" id="well-number" value="1" min="1" max="15" class="inp"></div>
+  </div>
+ </div>
+
+ <div class="card !p-4">
+  <button id="toggle-curve-btn" class="w-full flex items-center justify-between text-xs font-semibold text-slate-300 hover:text-slate-100">
+   <span class="flex items-center gap-2"><i class="fa-solid fa-table-list text-teal-400"></i>Tabella di riferimento del foglietto illustrativo</span>
+   <i id="curve-chevron" class="fa-solid fa-chevron-down transition-transform"></i>
+  </button>
+  <div id="curve-panel" class="hidden mt-4 pt-3 border-t border-slate-700/80 space-y-2">
+   <p class="text-xs text-slate-400">Diametro dell'anello (mm) e concentrazione (mg/dL) come riportati nel PI. Il risultato si legge direttamente dalla tabella.</p>
+   <div class="max-h-56 overflow-y-auto"><table class="w-full text-xs text-center"><thead class="text-slate-300 sticky top-0 bg-slate-800"><tr><th class="py-1">d (mm)</th><th>d² (mm²)</th><th>mg/dL</th></tr></thead><tbody id="points-list"></tbody></table></div>
+  </div>
+ </div>
+ <button onclick="switchStep(2)" class="btn-p w-full">Procedi con l'acquisizione foto <i class="fa-solid fa-arrow-right"></i></button>
+</section>
+
+<!-- STEP 2 -->
+<section id="step-2" class="hidden space-y-5">
+ <div class="card text-center space-y-4">
+  <h2 class="text-base font-semibold flex items-center justify-center gap-2"><i class="fa-solid fa-camera text-teal-400"></i>2. Acquisisci o carica la foto</h2>
+  <p class="text-xs text-slate-400">Fotografa la piastra perpendicolarmente oppure carica un'immagine dalla galleria.</p>
+  <div class="relative bg-slate-950 rounded-xl overflow-hidden min-h-[260px] flex items-center justify-center border border-slate-800">
+   <video id="webcam-feed" autoplay playsinline muted class="w-full h-full object-cover hidden"></video>
+   <div id="camera-placeholder" class="py-12 px-4 space-y-3"><i class="fa-solid fa-circle-nodes text-4xl text-slate-600"></i><p class="text-xs text-slate-400 max-w-xs mx-auto">Avvia la fotocamera oppure carica una foto salvata.</p></div>
+   <div id="camera-overlay" class="hidden absolute inset-0 border-2 border-teal-500/30 pointer-events-none flex items-center justify-center">
+    <div class="w-48 h-48 rounded-full border-2 border-dashed border-teal-400/50 flex items-center justify-center"><span class="text-[10px] text-teal-300 bg-slate-900/80 px-2 py-0.5 rounded">Centra il pozzetto</span></div>
+   </div>
+  </div>
+  <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+   <button id="start-camera-btn" onclick="startCamera()" class="btn !bg-slate-700"><i class="fa-solid fa-video"></i>Avvia fotocamera</button>
+   <button id="capture-photo-btn" onclick="captureCameraPhoto()" class="btn-p hidden"><i class="fa-solid fa-circle-dot"></i>Scatta fotografia</button>
+   <label class="btn"><i class="fa-solid fa-image"></i>Carica foto / galleria<input type="file" id="file-input" accept="image/*" class="hidden" onchange="handleFileUpload(event)"></label>
+  </div>
+  <div class="p-3 bg-amber-500/10 border border-amber-500/20 rounded-lg text-left text-[11px] text-amber-200/90 leading-tight">
+   <i class="fa-solid fa-lightbulb text-amber-400 mr-1"></i><strong>Consiglio:</strong> usa uno sfondo scuro con luce radente per evidenziare l'anello opaco di precipitazione.
+  </div>
+ </div>
+ <div class="flex gap-3">
+  <button onclick="switchStep(1)" class="btn w-1/3"><i class="fa-solid fa-arrow-left"></i>Indietro</button>
+  <button id="to-measure-btn" onclick="switchStep(3)" disabled class="btn-p w-2/3">Avanti: misura il diametro <i class="fa-solid fa-arrow-right"></i></button>
+ </div>
+</section>
+
+<!-- STEP 3 -->
+<section id="step-3" class="hidden space-y-4">
+ <div class="bg-slate-800/90 border border-slate-700 rounded-xl p-3 space-y-3">
+  <div class="flex items-center justify-between">
+   <span class="text-xs font-semibold flex items-center gap-1.5"><i class="fa-solid fa-ruler-combined text-teal-400"></i>Strumenti di misurazione</span>
+   <span id="scale-badge" class="text-[11px] px-2 py-0.5 bg-slate-900 text-amber-300 rounded border border-amber-500/40">Scala non calibrata</span>
+  </div>
+  <div class="grid grid-cols-2 gap-2 text-xs">
+   <button onclick="runAutoDetection()" class="py-2 bg-teal-600/20 hover:bg-teal-600/30 border border-teal-500/40 text-teal-300 font-medium rounded-lg flex items-center justify-center gap-1.5"><i class="fa-solid fa-wand-magic-sparkles"></i>Auto-rileva anello</button>
+   <button onclick="toggleCalibrationMode()" class="py-2 bg-slate-700 hover:bg-slate-600 text-slate-200 font-medium rounded-lg flex items-center justify-center gap-1.5"><i class="fa-solid fa-ruler"></i><span id="calib-btn-text">Imposta scala (mm)</span></button>
+  </div>
+ </div>
+
+ <div class="relative bg-slate-950 rounded-xl overflow-hidden border border-slate-800 shadow-2xl min-h-[320px] flex items-center justify-center">
+  <canvas id="analysis-canvas" class="max-w-full h-auto cursor-crosshair rounded-xl"></canvas>
+  <div class="absolute bottom-3 left-3 right-3 glass p-2.5 rounded-xl border border-slate-700/60 flex items-center justify-between text-xs">
+   <div class="flex items-center gap-3">
+    <div><span class="text-slate-400 block text-[10px]">Diametro d</span><span id="m-d" class="font-bold text-teal-400 text-sm">0.00 mm</span></div>
+    <div class="border-l border-slate-700 pl-3"><span class="text-slate-400 block text-[10px]">d²</span><span id="m-d2" class="font-semibold">0.00 mm²</span></div>
+   </div>
+   <div class="flex gap-1.5">
+    <button onclick="adjustDiameter(-0.1)" class="w-8 h-8 rounded-lg bg-slate-700 hover:bg-slate-600 font-bold" title="-0.1 mm">-</button>
+    <button onclick="adjustDiameter(0.1)" class="w-8 h-8 rounded-lg bg-slate-700 hover:bg-slate-600 font-bold" title="+0.1 mm">+</button>
+   </div>
+  </div>
+ </div>
+
+ <div class="p-3 bg-slate-800/80 rounded-xl border border-teal-500/40 text-xs space-y-2">
+  <div class="flex justify-between items-center font-medium">
+   <span>Riferimento per la scala:</span>
+   <select id="scale-ref-type" onchange="updateScaleReference()" class="bg-slate-900 border border-slate-700 rounded px-2 py-1">
+    <option value="custom">Righello / riferimento noto</option>
+   </select>
+  </div>
+  <div id="custom-scale-box" class="flex items-center gap-2">
+   <span class="text-slate-400">Lunghezza del tratto (mm):</span>
+   <input type="number" id="custom-scale-mm" value="10" step="0.5" min="0.1" oninput="recalcScale()" class="w-20 bg-slate-900 border border-slate-700 rounded px-2 py-1 text-center">
+  </div>
+  <p class="text-[11px] text-slate-400">Inquadra un righello in mm accanto alla piastra, premi «Imposta scala», trascina i punti blu agli estremi di un tratto noto, scrivi la sua lunghezza qui sopra e premi «Salva calibrazione». Il foglietto non indica il diametro del pozzetto, quindi non è usato come riferimento.</p>
+ </div>
+
+ <div class="flex gap-3">
+  <button onclick="switchStep(2)" class="btn w-1/3"><i class="fa-solid fa-arrow-left"></i>Foto</button>
+  <button onclick="switchStep(4)" class="btn-p w-2/3">Calcola concentrazione <i class="fa-solid fa-calculator"></i></button>
+ </div>
+</section>
+
+<!-- STEP 4 -->
+<section id="step-4" class="hidden space-y-5">
+ <div id="report-card" class="bg-slate-800 border border-slate-700 rounded-xl p-5 shadow-xl space-y-5">
+  <div class="flex items-start justify-between gap-2 border-b border-slate-700 pb-4">
+   <div>
+    <span id="r-kit" class="text-xs font-semibold uppercase tracking-wider text-teal-400"></span>
+    <h2 id="r-name" class="text-xl font-bold"></h2>
+    <p class="text-xs text-slate-400 mt-0.5">Campione: <strong id="r-sample" class="text-slate-200"></strong> | Pozzetto N°: <span id="r-well"></span></p>
+   </div>
+   <div id="r-badge" class="px-2.5 py-1 rounded-full text-xs font-bold border text-center"></div>
+  </div>
+  <div class="bg-slate-900/90 rounded-xl p-4 border border-slate-700/80 text-center space-y-1">
+   <span class="text-xs text-slate-400 uppercase font-medium">Concentrazione finale calcolata</span>
+   <div id="r-conc" class="text-3xl sm:text-4xl font-extrabold text-teal-400"></div>
+   <div class="text-xs text-slate-400 pt-1">Diluizione del campione: <span id="r-dil" class="text-slate-200 font-semibold"></span></div>
+  </div>
+  <div class="grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs">
+   <div class="box"><span class="text-slate-400 block mb-0.5">Diametro d</span><span id="r-d" class="text-sm font-semibold"></span></div>
+   <div class="box"><span class="text-slate-400 block mb-0.5">d²</span><span id="r-d2" class="text-sm font-semibold"></span></div>
+   <div class="box col-span-2 sm:col-span-1"><span class="text-slate-400 block mb-0.5">Valori normali adulti (PI)</span><span id="r-undil" class="text-sm font-semibold"></span></div>
+  </div>
+  <div class="box space-y-1 text-slate-300">
+   <div class="flex items-center gap-2 font-semibold"><i class="fa-solid fa-circle-info text-teal-400"></i>Note tecniche</div>
+   <p id="r-msg" class="text-slate-400"></p>
+  </div>
+  <div class="text-[10px] text-slate-500 text-center italic border-t border-slate-700/60 pt-3">Fonte: foglietto illustrativo Liofilchem F02013 Rev.6 (11.07.2006), tabelle dei valori di riferimento. Interpolazione lineare su d² tra i valori tabulati. Controllo qualità: siero di controllo (CV ≤ 5 %, accuratezza ±15 %). Interpretazione clinica: riferirsi alla bibliografia.</div>
+ </div>
+ <div class="grid grid-cols-2 gap-3">
+  <button onclick="copyResults()" class="btn"><i class="fa-solid fa-copy"></i>Copia risultati</button>
+  <button onclick="window.print()" class="btn-p"><i class="fa-solid fa-print"></i>Stampa / Salva PDF</button>
+ </div>
+ <button onclick="newMeasurement()" class="btn w-full"><i class="fa-solid fa-rotate-left"></i>Nuova misurazione</button>
+</section>
+</main>
+
+<div id="toast" class="fixed bottom-5 left-1/2 -translate-x-1/2 bg-slate-800 px-4 py-2.5 rounded-xl border border-slate-700 shadow-2xl text-xs font-medium flex items-center gap-2 opacity-0 pointer-events-none transition-all duration-300 z-50">
+ <i id="toast-icon" class="fa-solid fa-circle-check text-teal-400"></i><span id="toast-msg"></span>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+
+/* Fonte: foglietto illustrativo Liofilchem F02013 Rev.6 (11.07.2006), Easy RID Multiplate (cod. 93104, 93106, 93110, 93115).
+   Colonne: d (mm), IgG, IgA, IgM, C3c, C4, ApoA1, ApoB, Catena k, Catena λ (mg/dL). Catena k/λ: campione diluito 1:6 (1+5). */
+const PI_ROWS = [
+[3.9,210.5,35.4,27.0,13.8,5.1,23.0,15.7,42.1,26.9],[4,250.0,42.0,32.1,16.4,6.0,27.3,18.6,50.0,32.0],[4.1,290.5,48.8,37.2,19.1,7.0,31.7,21.6,58.1,37.2],[4.2,332.0,55.8,42.6,21.8,8.0,36.3,24.7,66.4,42.5],[4.3,374.5,62.9,48.0,24.6,9.0,40.9,27.9,74.9,47.9],
+[4.4,418,70.2,53.6,27.4,10.0,45.7,31.1,83.6,53.5],[4.5,463,77.7,59.3,30.3,11.1,50.5,34.4,92.5,59.2],[4.6,508,85.3,65,33.3,12.2,55.5,37.8,102,65.0],[4.7,555,93.2,71,36.4,13.3,60.6,41.3,111,71.0],[4.8,602,101.1,77,39.5,14.5,65.8,44.8,120,77.1],
+[4.9,651,109.3,83,42.7,16.0,71.1,48.4,130,83.3],[5,700,117.6,90,45.9,17.0,76.5,52.1,140,89.6],[5.1,751,126.1,96,49.2,18.0,82.0,55.8,150,96.1],[5.2,802,134.7,103,52.6,19.0,87.7,59.7,160,103],[5.3,855,143.6,110,56.1,21.0,93.4,63.6,171,109],
+[5.4,908,152.5,116,59.6,22.0,99.2,67.6,182,116],[5.5,963,161.7,123,63.1,23.0,105,71.6,193,123],[5.6,1018,171.0,131,66.8,24.0,111,75.7,204,130],[5.7,1074,180.5,138,70.5,26.0,117,79.9,215,138],[5.8,1132,190.2,145,74.3,27.0,124,84.2,226,145],
+[5.9,1190,200.0,153,78.1,29.0,130,88.6,238,152],[6,1250,210.0,160,82.0,30.0,137,93.0,250,160],[6.1,1310,220.2,168,86.0,31.0,143,97.5,262,168],[6.2,1372,230.5,176,90.0,33.0,150,102,274,176],[6.3,1434,241.0,184,94.1,34.0,157,107,287,184],
+[6.4,1498,251.7,192,98.3,36.0,164,111,300,192],[6.5,1562,262.5,200,102.5,38.0,171,116,312,200],[6.6,1628,273.5,209,106.8,39.0,178,121,326,208],[6.7,1694,284.7,217,111.2,41.0,185,126,339,217],[6.8,1762,296.0,226,115.6,42.0,193,131,352,226],
+[6.9,1830,307.5,235,120.1,44.0,200,136,366,234],[7,1900,319.2,244,124.6,46.0,208,141,380,243],[7.1,1970,331.0,253,129.3,47.0,215,147,394,252],[7.2,2042,343.0,262,134.0,49.0,223,152,408,261],[7.3,2114,355.2,271,138.7,51.0,231,157,423,271],
+[7.4,2188,367.6,281,143.5,53.0,239,163,438,280],[7.5,2262,380.1,290,148.4,54.0,247,168,452,290],[7.6,2338,392.8,300,153.4,56.0,256,174,468,299],[7.7,2414,405.6,310,158.4,58.0,264,180,483,309],[7.8,2492,418.6,319,163.5,60.0,272,185,498,319],
+[7.9,2570,431.8,330,168.6,62.0,281,191,514,329],[8,2650,445.2,340,173.8,64.0,290,197,530,339],[8.1,2730,458.7,350,179.1,66.0,298,203,546,350],[8.2,2812,472.4,361,184.5,68.0,307,209,562,360],[8.3,2894,486.3,371,189.9,69.0,316,215,579,370],
+[8.4,2978,500.3,382,195.4,72.0,325,222,596,381],[8.5,3062,514.5,393,200.9,74.0,335,228,612,392],[8.6,3148,528.9,404,206.5,76.0,344,234,630,403],[8.7,3234,543.4,415,212.2,78.0,353,241,647,414],[8.8,3322,558.1,426,217.9,80.0,363,247,664,425],
+[8.9,3410,573.0,437,223.7,82.0,373,254,682,437],[9,3500,588.0,449,229.6,84.0,383,260,700,448],[9.1,3590,603.2,460,236,86.0,392,267,718,460],[9.2,3682,618.6,472,242,88.0,402,274,736,471],[9.3,3774,634.1,484,248,91.0,413,281,736,483]
+];
+// [id, codice, nome, gel, diluizione, colore, colonna in PI_ROWS, valori normali adulti (PI)]
+const PRESETS = [
+ ['93115_kappa','93115','h-Catene Leggere Kappa (κ)','Verde',6,'#10b981',8,'200–440'],
+ ['93115_lambda','93115','h-Catene Leggere Lambda (λ)','Blu',6,'#3b82f6',9,'110–240'],
+ ['93104_igg','93104','h-IgG Immunoglobulina G','Verde',1,'#10b981',1,'800–1800'],
+ ['93104_iga','93104','h-IgA Immunoglobulina A','Rosso',1,'#ef4444',2,'90–450'],
+ ['93104_igm','93104','h-IgM Immunoglobulina M','Blu',1,'#3b82f6',3,'50–370'],
+ ['93106_c3c','93106','h-C3c Frazione Complemento','Giallo',1,'#eab308',4,'90–180'],
+ ['93106_c4','93106','h-C4 Frazione Complemento','Rosso',1,'#ef4444',5,'20–50'],
+ ['93110_apoa1','93110','h-ApoA1 Apolipoproteina A1','Rosso',1,'#ef4444',6,'90–210'],
+ ['93110_apob','93110','h-ApoB Apolipoproteina B','Verde',1,'#10b981',7,'60–155']
+].map(([id,code,name,gel,dil,color,col,normal]) => ({id,code:'Cod. '+code,name,gelColor:gel,dilution:dil,unit:'mg/dL',color,normal,points:PI_ROWS.map(r=>({d:r[0],conc:r[col]}))}));
+
+let currentStep = 1, preset = PRESETS[0];
+let img = new Image(), imageLoaded = false, stream = null;
+let canvas, ctx;
+let pxPerMm = 20, geometryInit = false, scaleCalibrated = false;
+let center = {x:200,y:200}, ringR = 70, wellR = 40;
+let calibMode = false, calibPts = [{x:100,y:100},{x:200,y:100}];
+let drag = null; // 'center' | 'radius' | 0 | 1 (punti calibrazione)
+
+function clone(o){ return JSON.parse(JSON.stringify(o)); }
+
+window.addEventListener('DOMContentLoaded', () => {
+  ['Configura','Acquisisci','Misura','Risultato'].forEach((label,i) => {
+    const b = document.createElement('button');
+    b.id = 'tab-'+(i+1); b.className = 'tab';
+    b.innerHTML = `<span class="w-5 h-5 rounded-full bg-slate-700 text-slate-300 flex items-center justify-center text-xs font-bold">${i+1}</span><span class="hidden sm:inline">${label}</span>`;
+    b.onclick = () => switchStep(i+1);
+    $('tabs').appendChild(b);
+  });
+  const sel = $('preset-select');
+  PRESETS.forEach(p => sel.add(new Option(`${p.code} - ${p.name}`, p.id)));
+  sel.onchange = e => { preset = PRESETS.find(p => p.id === e.target.value); renderPreset(); };
+  $('toggle-curve-btn').onclick = () => { $('curve-panel').classList.toggle('hidden'); $('curve-chevron').classList.toggle('rotate-180'); };
+  $('reset-app-btn').onclick = () => { if (confirm('Azzerare la sessione e ripartire dall\'inizio?')) { stopCamera(); location.reload(); } };
+  renderPreset(); initCanvas(); switchStep(1);
+  window.addEventListener('resize', () => { if (currentStep === 3) resizeAndDraw(); });
+});
+
+/* ---------- STEP 1 ---------- */
+function renderPreset(){
+  $('info-gel').textContent = preset.gelColor;
+  $('info-dil').textContent = preset.dilution > 1 ? '1:6 (1+5) in PBS o soluzione salina' : 'Non diluito';
+  const p = preset.points;
+  $('info-range').textContent = `${p[0].d} – ${p[p.length-1].d} mm`;
+  $('info-normal').textContent = `${preset.normal} ${preset.unit}`;
+  $('points-list').innerHTML = p.map(x => `<tr class="border-b border-slate-800"><td class="py-1 text-slate-300">${x.d}</td><td class="text-slate-400 font-mono">${(x.d*x.d).toFixed(2)}</td><td class="text-teal-300 font-semibold">${x.conc}</td></tr>`).join('');
+}
+
+/* ---------- NAVIGAZIONE ---------- */
+function switchStep(n){
+  if (n >= 3 && !imageLoaded) return showToast('Carica o scatta prima una foto della piastra.','warning');
+  if (n === 4 && !calculate()) return;
+  if (n !== 2) stopCamera();
+  currentStep = n;
+  for (let i=1;i<=4;i++){
+    $('step-'+i).classList.toggle('hidden', i!==n);
+    $('tab-'+i).classList.toggle('on', i===n);
+  }
+  window.scrollTo({top:0,behavior:'smooth'});
+  if (n === 3) setTimeout(resizeAndDraw, 50);
+}
+function newMeasurement(){ imageLoaded = false; $('to-measure-btn').disabled = true; $('file-input').value=''; switchStep(1); }
+
+/* ---------- STEP 2: FOTOCAMERA / FILE ---------- */
+async function startCamera(){
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'},width:{ideal:1920},height:{ideal:1080}}});
+    const v = $('webcam-feed'); v.srcObject = stream;
+    v.classList.remove('hidden'); $('camera-placeholder').classList.add('hidden'); $('camera-overlay').classList.remove('hidden');
+    $('capture-photo-btn').classList.remove('hidden'); $('start-camera-btn').classList.add('hidden');
+  } catch(err){ showToast('Fotocamera non disponibile (serve HTTPS e permessi): '+err.message,'error'); }
+}
+function stopCamera(){
+  if (stream){ stream.getTracks().forEach(t=>t.stop()); stream = null; }
+  $('webcam-feed').classList.add('hidden'); $('camera-placeholder').classList.remove('hidden'); $('camera-overlay').classList.add('hidden');
+  $('capture-photo-btn').classList.add('hidden'); $('start-camera-btn').classList.remove('hidden');
+}
+function setImage(src, msg){
+  const im = new Image();
+  im.onload = () => {
+    img = im; imageLoaded = true; geometryInit = false; scaleCalibrated = false; calibMode = false;
+    $('calib-btn-text').textContent = 'Imposta scala (mm)';
+    stopCamera(); $('to-measure-btn').disabled = false; showToast(msg); switchStep(3);
+  };
+  im.onerror = () => showToast('Immagine non valida.','error');
+  im.src = src;
+}
+function captureCameraPhoto(){
+  const v = $('webcam-feed'), c = document.createElement('canvas');
+  c.width = v.videoWidth || 1280; c.height = v.videoHeight || 720;
+  c.getContext('2d').drawImage(v,0,0,c.width,c.height);
+  setImage(c.toDataURL('image/jpeg',0.92),'Foto acquisita.');
+}
+function handleFileUpload(e){
+  const f = e.target.files[0]; if (!f) return;
+  const r = new FileReader();
+  r.onload = ev => setImage(ev.target.result,'Immagine caricata.');
+  r.readAsDataURL(f);
+  e.target.value = ''; // permette di ricaricare lo stesso file
+}
+
+/* ---------- STEP 3: CANVAS ---------- */
+function initCanvas(){
+  canvas = $('analysis-canvas'); ctx = canvas.getContext('2d');
+  canvas.addEventListener('pointerdown', onDown);
+  canvas.addEventListener('pointermove', onMove);
+  ['pointerup','pointercancel'].forEach(t => window.addEventListener(t, () => { drag = null; }));
+}
+function resizeAndDraw(){
+  if (!imageLoaded) return;
+  const oldW = canvas.width;
+  const w = Math.max(200, canvas.parentElement.clientWidth - 10);
+  const s = w / img.width;
+  canvas.width = Math.round(img.width * s); canvas.height = Math.round(img.height * s);
+  if (!geometryInit){
+    center = {x:canvas.width/2, y:canvas.height/2};
+    ringR = Math.min(canvas.width, canvas.height) * 0.2;
+    wellR = ringR * 0.4;
+    pxPerMm = (wellR*2)/4; // provvisoria: l'utente deve calibrare
+    calibPts = [{x:center.x-wellR,y:center.y},{x:center.x+wellR,y:center.y}];
+    geometryInit = true;
+  } else if (oldW && oldW !== canvas.width){
+    const k = canvas.width / oldW;
+    center.x*=k; center.y*=k; ringR*=k; wellR*=k; pxPerMm*=k;
+    calibPts.forEach(p => { p.x*=k; p.y*=k; });
+  }
+  redraw();
+}
+function drawImageOnly(){ ctx.clearRect(0,0,canvas.width,canvas.height); ctx.drawImage(img,0,0,canvas.width,canvas.height); }
+function redraw(){
+  if (!imageLoaded) return;
+  drawImageOnly();
+  calibMode ? drawCalib() : drawMeasure();
+  updateDisplay();
+}
+function dot(x,y,r,fill,stroke){ ctx.beginPath(); ctx.arc(x,y,r,0,2*Math.PI); ctx.fillStyle=fill; ctx.fill(); ctx.strokeStyle=stroke; ctx.lineWidth=2; ctx.stroke(); }
+function drawMeasure(){
+  const col = preset.color;
+  ctx.beginPath(); ctx.arc(center.x,center.y,ringR,0,2*Math.PI);
+  ctx.strokeStyle=col; ctx.lineWidth=2.5; ctx.stroke(); ctx.fillStyle=col+'20'; ctx.fill();
+  dot(center.x,center.y,6,'#fff','#0f172a');
+  dot(center.x+ringR,center.y,8,col,'#fff');
+}
+function drawCalib(){
+  const [a,b] = calibPts;
+  ctx.beginPath(); ctx.moveTo(a.x,a.y); ctx.lineTo(b.x,b.y);
+  ctx.strokeStyle='#38bdf8'; ctx.lineWidth=3; ctx.stroke();
+  calibPts.forEach(p => dot(p.x,p.y,8,'#0284c7','#fff'));
+}
+function pointerPos(e){
+  const r = canvas.getBoundingClientRect();
+  return {x:(e.clientX-r.left)*canvas.width/r.width, y:(e.clientY-r.top)*canvas.height/r.height};
+}
+function onDown(e){
+  e.preventDefault(); const p = pointerPos(e);
+  const hit = 28 * (canvas.width / canvas.getBoundingClientRect().width); // soglia in px canvas
+  if (calibMode){
+    const d = calibPts.map(q => Math.hypot(p.x-q.x,p.y-q.y));
+    const i = d[0] <= d[1] ? 0 : 1;
+    if (d[i] < hit) drag = i;
+  } else if (Math.hypot(p.x-(center.x+ringR),p.y-center.y) < hit) drag = 'radius';
+  else if (Math.hypot(p.x-center.x,p.y-center.y) < Math.max(hit,ringR)) drag = 'center';
+  if (drag !== null) canvas.setPointerCapture(e.pointerId);
+}
+function onMove(e){
+  if (drag === null) return;
+  e.preventDefault(); const p = pointerPos(e);
+  if (drag === 0 || drag === 1){ calibPts[drag] = p; recalcScale(); }
+  else if (drag === 'center') center = p;
+  else ringR = Math.max(10, Math.hypot(p.x-center.x,p.y-center.y));
+  redraw();
+}
+function adjustDiameter(mm){ ringR = Math.max(10, ringR + (mm/2)*pxPerMm); redraw(); }
+function diameterMm(){ return (ringR*2)/pxPerMm; }
+function updateDisplay(){
+  const d = diameterMm();
+  $('m-d').textContent = d.toFixed(2)+' mm'; $('m-d2').textContent = (d*d).toFixed(2)+' mm²';
+  const b = $('scale-badge');
+  b.textContent = scaleCalibrated ? `Scala: ${pxPerMm.toFixed(1)} px/mm` : 'Scala non calibrata';
+  b.className = 'text-[11px] px-2 py-0.5 bg-slate-900 rounded border ' + (scaleCalibrated ? 'text-teal-300 border-teal-500/30' : 'text-amber-300 border-amber-500/40');
+}
+
+/* ---------- RILEVAMENTO AUTOMATICO ---------- */
+function runAutoDetection(){
+  if (!imageLoaded) return;
+  showToast('Analisi immagine in corso...');
+  setTimeout(() => {
+    drawImageOnly(); // legge i pixel SENZA overlay
+    const W = canvas.width, H = canvas.height, data = ctx.getImageData(0,0,W,H).data;
+    const cx = Math.round(center.x), cy = Math.round(center.y);
+    const lum = (x,y) => { const i = (y*W+x)*4; return 0.299*data[i]+0.587*data[i+1]+0.114*data[i+2]; };
+    let best = ringR, bestScore = -1;
+    const rMax = Math.min(W,H)*0.45, N = 48;
+    for (let r = wellR+6; r < rMax; r += 1.5){
+      let sum = 0, n = 0;
+      for (let k=0;k<N;k++){
+        const a = k*2*Math.PI/N, c = Math.cos(a), s = Math.sin(a);
+        const xi = Math.round(cx+(r-3)*c), yi = Math.round(cy+(r-3)*s);
+        const xo = Math.round(cx+(r+3)*c), yo = Math.round(cy+(r+3)*s);
+        if (xi<0||yi<0||xo<0||yo<0||xi>=W||xo>=W||yi>=H||yo>=H) continue;
+        sum += Math.abs(lum(xo,yo)-lum(xi,yi)); n++;
+      }
+      if (n > N*0.8 && sum/n > bestScore){ bestScore = sum/n; best = r; }
+    }
+    ringR = best; redraw();
+    showToast('Anello rilevato. Regola se necessario.');
+  }, 50);
+}
+
+/* ---------- CALIBRAZIONE SCALA ---------- */
+function toggleCalibrationMode(){
+  calibMode = !calibMode;
+  if (calibMode){
+    $('calib-btn-text').textContent = 'Salva calibrazione';
+    showToast('Porta i punti blu agli estremi del riferimento noto.');
+  } else {
+    scaleCalibrated = true; recalcScale();
+    $('calib-btn-text').textContent = 'Imposta scala (mm)';
+    showToast('Scala impostata.');
+  }
+  redraw();
+}
+function updateScaleReference(){
+  $('custom-scale-box').classList.toggle('hidden', $('scale-ref-type').value !== 'custom');
+  recalcScale(); redraw();
+}
+function recalcScale(){
+  const dist = Math.hypot(calibPts[1].x-calibPts[0].x, calibPts[1].y-calibPts[0].y);
+  const t = $('scale-ref-type').value;
+  const mm = parseFloat($('custom-scale-mm').value) || 10;
+  if (dist > 5 && mm > 0) pxPerMm = dist/mm;
+  updateDisplay();
+}
+
+/* ---------- STEP 4: CALCOLO ---------- */
+let lastText = '';
+function calculate(){
+  const pts = preset.points, d = diameterMm(), d2 = d*d, lo = pts[0], hi = pts[pts.length-1];
+  const AMB='bg-amber-500/20 text-amber-400 border-amber-500/40', OK='bg-emerald-500/20 text-emerald-400 border-emerald-500/40', BAD='bg-rose-500/20 text-rose-400 border-rose-500/40';
+  let conc = 0, prefix = '', cls = OK, badge = 'In range';
+  let msg = `Diametro compreso nell'intervallo della tabella del foglietto illustrativo (${lo.d}–${hi.d} mm). Valore ottenuto per interpolazione lineare su d².`;
+  if (d < lo.d){ prefix='< '; conc=lo.conc; cls=AMB; badge='Sotto il minimo';
+    msg = `Diametro (${d.toFixed(2)} mm) inferiore al minimo della tabella (${lo.d} mm): l'anello è difficile da misurare e il valore indicato è un limite, non una misura. Il foglietto consiglia strumenti di lettura con maggiore sensibilità.`;
+  } else if (d > hi.d){ prefix='> '; conc=hi.conc; cls=BAD; badge='Sopra il massimo';
+    msg = `Diametro (${d.toFixed(2)} mm) superiore al massimo della tabella (${hi.d} mm): anello non misurabile e valore indicato come limite. Il foglietto consiglia di diluire il campione e ripetere.`;
+  } else {
+    for (let i=0;i<pts.length-1;i++){
+      const a=pts[i], b=pts[i+1], x1=a.d*a.d, x2=b.d*b.d;
+      if (d2>=x1 && d2<=x2){ conc = a.conc + (b.conc-a.conc)/(x2-x1)*(d2-x1); break; }
+    }
+  }
+  if (!scaleCalibrated){
+    cls = AMB; badge = 'Scala non calibrata';
+    msg = '⚠ Scala non calibrata: il diametro non è affidabile. Torna allo step 3 e usa «Imposta scala». ' + msg;
+  }
+  const fmt = v => v >= 100 ? v.toFixed(0) : v.toFixed(1);
+  const unit = preset.unit, sid = $('sample-id').value || 'CAMP-001', well = $('well-number').value || '1';
+  const dilTxt = preset.dilution > 1 ? '1:6 (1+5)' : 'Non diluito';
+  const res = `${prefix}${fmt(conc)} ${unit}`;
+
+  $('r-kit').textContent = `${preset.code} - Liofilchem® Easy RID`;
+  $('r-name').textContent = preset.name; $('r-sample').textContent = sid; $('r-well').textContent = well;
+  $('r-conc').textContent = res; $('r-dil').textContent = dilTxt;
+  $('r-d').textContent = d.toFixed(2)+' mm'; $('r-d2').textContent = d2.toFixed(2)+' mm²';
+  $('r-undil').textContent = `${preset.normal} ${unit}`;
+  $('r-badge').className = 'px-2.5 py-1 rounded-full text-xs font-bold border text-center '+cls; $('r-badge').textContent = badge;
+  $('r-msg').textContent = msg;
+  lastText = `[Liofilchem Easy RID]\nCampione: ${sid}\nPozzetto: ${well}\nTest: ${preset.name}\nPreparazione campione: ${dilTxt}\nDiametro: ${d.toFixed(2)} mm\nConcentrazione: ${res}\nValori normali adulti (PI): ${preset.normal} ${unit}\nScala calibrata: ${scaleCalibrated?'sì':'NO'}\nFonte: PI Liofilchem F02013 Rev.6\nData: ${new Date().toLocaleString('it-IT')}`;
+  return true;
+}
+
+/* ---------- UTILITÀ ---------- */
+function copyResults(){
+  const fallback = () => { const t=document.createElement('textarea'); t.value=lastText; document.body.appendChild(t); t.select(); document.execCommand('copy'); t.remove(); showToast('Risultati copiati.'); };
+  if (navigator.clipboard && window.isSecureContext) navigator.clipboard.writeText(lastText).then(()=>showToast('Risultati copiati.'), fallback);
+  else fallback();
+}
+let toastTimer;
+function showToast(msg, type='info'){
+  $('toast-msg').textContent = msg;
+  $('toast-icon').className = type==='warning' ? 'fa-solid fa-triangle-exclamation text-amber-400' : type==='error' ? 'fa-solid fa-circle-xmark text-rose-400' : 'fa-solid fa-circle-check text-teal-400';
+  const t = $('toast'); t.classList.remove('opacity-0','pointer-events-none');
+  clearTimeout(toastTimer); toastTimer = setTimeout(()=>t.classList.add('opacity-0','pointer-events-none'), 3200);
+}
+</script>
+</body>
+</html>
