@@ -2,30 +2,42 @@
 <html lang="it">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Liofilchem Easy RID - Analizzatore Piastre</title>
-<script src="https://cdn.tailwindcss.com"></script>
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<script src="https://cdn.tailwindcss.com/3.4.17"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/js/all.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <script>
-tailwind.config={darkMode:'class',theme:{extend:{fontFamily:{sans:['Inter','sans-serif']}}}}
+tailwind.config={darkMode:'class',theme:{extend:{fontFamily:{sans:['Inter','system-ui','sans-serif']}}}}
 </script>
 <style type="text/tailwindcss">
 @layer components{
  .card{@apply bg-slate-800/60 border border-slate-700/80 rounded-xl p-5 shadow-lg}
  .inp{@apply w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-sm text-slate-100 focus:outline-none focus:border-teal-500}
  .btn{@apply py-3 rounded-xl text-xs font-medium flex items-center justify-center gap-2 transition bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 cursor-pointer}
- .btn-p{@apply py-3 rounded-xl text-xs font-semibold flex items-center justify-center gap-2 transition bg-teal-600 hover:bg-teal-500 text-white shadow-lg disabled:opacity-50}
+ .btn-p{@apply py-3 rounded-xl text-xs font-semibold flex items-center justify-center gap-2 transition bg-teal-600 hover:bg-teal-500 text-white shadow-lg disabled:opacity-50 cursor-pointer}
  .tab{@apply flex-1 py-2.5 text-center transition flex items-center justify-center gap-1.5 opacity-60}
  .tab.on{@apply opacity-100 text-teal-400 font-semibold border-b-4 border-teal-600}
  .box{@apply p-3 bg-slate-900/60 rounded-lg border border-slate-700/60 text-xs}
 }
 </style>
 <style>
-body{touch-action:manipulation;-webkit-user-select:none;user-select:none}
-input,textarea,select{-webkit-user-select:text;user-select:text}
+:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+html{scroll-padding-top:env(safe-area-inset-top,0px);-webkit-text-size-adjust:100%}
+body{touch-action:manipulation;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);background:#1e293b;z-index:60}
+header{top:env(safe-area-inset-top,0px)!important}
+input,textarea,select{-webkit-user-select:text;user-select:text;font-size:16px!important}
 canvas{touch-action:none}
-.glass{background:rgba(15,23,42,.75);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)}
+.glass{background:rgba(15,23,42,.85);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)}
+.btn,.btn-p{min-height:48px}
+.tool,.step{min-height:48px;border-radius:.75rem;font-weight:600;display:flex;align-items:center;justify-content:center;gap:.4rem;background:#334155;color:#e2e8f0;border:1px solid #475569;cursor:pointer;font-size:.8rem}
+.step:active,.tool:active{background:#475569}
+.tool.t{background:rgba(13,148,136,.2);border-color:rgba(20,184,166,.5);color:#5eead4}
+.bar{padding-bottom:calc(.75rem + env(safe-area-inset-bottom,0px))}
+.torch-on{background:rgba(245,158,11,.3)!important;color:#fcd34d!important}
+input[type=range]{width:100%;accent-color:#14b8a6;height:32px}
+#toast{bottom:6rem!important}
 @media print{
  body *{visibility:hidden}
  #report-card,#report-card *{visibility:visible}
@@ -42,7 +54,7 @@ canvas{touch-action:none}
    <div class="w-9 h-9 rounded-lg bg-teal-500/20 border border-teal-500/40 flex items-center justify-center text-teal-400 text-xl"><i class="fa-solid fa-circle-dot"></i></div>
    <div><h1 class="text-base font-bold leading-tight">Easy RID Reader</h1><p class="text-xs text-slate-400">Analisi Immunodiffusione Radiale</p></div>
   </div>
-  <button id="reset-app-btn" class="text-xs px-2.5 py-1.5 rounded-lg bg-slate-700 hover:bg-slate-600 text-slate-300"><i class="fa-solid fa-rotate-right mr-1"></i>Reset</button>
+  <button id="reset-app-btn" class="text-xs px-3 py-2 rounded-lg bg-slate-700 hover:bg-slate-600 text-slate-300"><i class="fa-solid fa-rotate-right mr-1"></i>Reset</button>
  </div>
  <nav id="tabs" class="flex border-t border-slate-700 bg-slate-800/80 text-xs sm:text-sm font-medium text-slate-400 max-w-4xl mx-auto"></nav>
 </header>
@@ -58,49 +70,67 @@ canvas{touch-action:none}
   </div>
   <div><label class="block text-xs text-slate-300 mb-1">Kit / test RID</label><select id="preset-select" class="inp"></select></div>
   <div class="box space-y-1.5">
-   <div class="flex justify-between"><span class="text-slate-400">Colore gel:</span><span id="info-gel" class="text-slate-200 font-medium"></span></div>
-   <div class="flex justify-between"><span class="text-slate-400">Diluizione campione:</span><span id="info-dil" class="text-teal-400 font-semibold"></span></div>
-   <div class="flex justify-between"><span class="text-slate-400">Range della tabella PI:</span><span id="info-range" class="text-slate-300"></span></div>
-   <div class="flex justify-between"><span class="text-slate-400">Valori normali adulti (PI):</span><span id="info-normal" class="text-slate-300"></span></div>
+   <div class="flex justify-between gap-2"><span class="text-slate-400">Colore gel:</span><span id="info-gel" class="text-slate-200 font-medium"></span></div>
+   <div class="flex justify-between gap-2"><span class="text-slate-400">Diluizione campione:</span><span id="info-dil" class="text-teal-400 font-semibold text-right"></span></div>
+   <div class="flex justify-between gap-2"><span class="text-slate-400">Range della tabella PI:</span><span id="info-range" class="text-slate-300"></span></div>
+   <div class="flex justify-between gap-2"><span class="text-slate-400">Valori normali adulti (PI):</span><span id="info-normal" class="text-slate-300"></span></div>
   </div>
   <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
    <div><label class="block text-xs text-slate-300 mb-1">ID campione / paziente</label><input id="sample-id" class="inp" placeholder="Es. CAMP-2026-001"></div>
-   <div><label class="block text-xs text-slate-300 mb-1">Numero pozzetto</label><input type="number" id="well-number" value="1" min="1" max="15" class="inp"></div>
+   <div><label class="block text-xs text-slate-300 mb-1">Numero pozzetto</label><input type="number" inputmode="numeric" id="well-number" value="1" min="1" max="15" class="inp"></div>
   </div>
  </div>
 
  <div class="card !p-4">
-  <button id="toggle-curve-btn" class="w-full flex items-center justify-between text-xs font-semibold text-slate-300 hover:text-slate-100">
+  <button id="toggle-curve-btn" class="w-full flex items-center justify-between text-xs font-semibold text-slate-300 hover:text-slate-100 py-1">
    <span class="flex items-center gap-2"><i class="fa-solid fa-table-list text-teal-400"></i>Tabella di riferimento del foglietto illustrativo</span>
-   <i id="curve-chevron" class="fa-solid fa-chevron-down transition-transform"></i>
+   <span id="curve-chevron" class="inline-block transition-transform"><i class="fa-solid fa-chevron-down"></i></span>
   </button>
   <div id="curve-panel" class="hidden mt-4 pt-3 border-t border-slate-700/80 space-y-2">
-   <p class="text-xs text-slate-400">Diametro dell'anello (mm) e concentrazione (mg/dL) come riportati nel PI. Il risultato si legge direttamente dalla tabella.</p>
+   <p class="text-xs text-slate-400">Diametro dell’anello (mm) e concentrazione (mg/dL) come riportati nel PI. Il risultato si legge direttamente dalla tabella.</p>
    <div class="max-h-56 overflow-y-auto"><table class="w-full text-xs text-center"><thead class="text-slate-300 sticky top-0 bg-slate-800"><tr><th class="py-1">d (mm)</th><th>d² (mm²)</th><th>mg/dL</th></tr></thead><tbody id="points-list"></tbody></table></div>
   </div>
  </div>
- <button onclick="switchStep(2)" class="btn-p w-full">Procedi con l'acquisizione foto <i class="fa-solid fa-arrow-right"></i></button>
+ <button onclick="switchStep(2)" class="btn-p w-full">Procedi con l’acquisizione foto <i class="fa-solid fa-arrow-right"></i></button>
 </section>
 
 <!-- STEP 2 -->
-<section id="step-2" class="hidden space-y-5">
- <div class="card text-center space-y-4">
-  <h2 class="text-base font-semibold flex items-center justify-center gap-2"><i class="fa-solid fa-camera text-teal-400"></i>2. Acquisisci o carica la foto</h2>
-  <p class="text-xs text-slate-400">Fotografa la piastra perpendicolarmente oppure carica un'immagine dalla galleria.</p>
-  <div class="relative bg-slate-950 rounded-xl overflow-hidden min-h-[260px] flex items-center justify-center border border-slate-800">
-   <video id="webcam-feed" autoplay playsinline muted class="w-full h-full object-cover hidden"></video>
-   <div id="camera-placeholder" class="py-12 px-4 space-y-3"><i class="fa-solid fa-circle-nodes text-4xl text-slate-600"></i><p class="text-xs text-slate-400 max-w-xs mx-auto">Avvia la fotocamera oppure carica una foto salvata.</p></div>
-   <div id="camera-overlay" class="hidden absolute inset-0 border-2 border-teal-500/30 pointer-events-none flex items-center justify-center">
-    <div class="w-48 h-48 rounded-full border-2 border-dashed border-teal-400/50 flex items-center justify-center"><span class="text-[10px] text-teal-300 bg-slate-900/80 px-2 py-0.5 rounded">Centra il pozzetto</span></div>
+<section id="step-2" class="hidden space-y-4">
+ <div class="card space-y-4">
+  <h2 class="text-base font-semibold flex items-center gap-2"><i class="fa-solid fa-camera text-teal-400"></i>2. Acquisisci o carica la foto</h2>
+
+  <div id="pick-box" class="space-y-3">
+   <label class="btn-p !py-4 text-sm"><i class="fa-solid fa-camera"></i>Scatta con la fotocamera<input type="file" accept="image/*" capture="environment" class="hidden" onchange="handleFileUpload(event)"></label>
+   <div class="grid grid-cols-2 gap-3">
+    <label class="btn"><i class="fa-solid fa-image"></i>Galleria<input type="file" id="file-input" accept="image/*" class="hidden" onchange="handleFileUpload(event)"></label>
+    <button id="start-camera-btn" onclick="startCamera()" class="btn"><i class="fa-solid fa-video"></i>Anteprima live</button>
+   </div>
+   <p class="text-[11px] text-slate-500 text-center">«Scatta» usa la fotocamera del telefono a piena risoluzione; «Anteprima live» mostra una griglia e un indicatore di inclinazione.</p>
+  </div>
+
+  <div id="camera-wrap" class="hidden space-y-3">
+   <div class="relative bg-black rounded-xl overflow-hidden">
+    <video id="webcam-feed" autoplay playsinline muted class="w-full h-auto max-h-[62vh] object-contain block"></video>
+    <div id="camera-overlay" class="absolute inset-0 pointer-events-none">
+     <svg class="absolute inset-0 w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none"><path d="M33.3 0V100M66.6 0V100M0 33.3H100M0 66.6H100" stroke="rgba(255,255,255,.25)" stroke-width=".4" fill="none"/></svg>
+     <div class="absolute inset-0 flex items-center justify-center"><div class="w-1/2 aspect-square rounded-full border-2 border-dashed border-teal-400/60"></div></div>
+     <div id="tilt-badge" class="hidden"></div>
+    </div>
+   </div>
+   <div class="flex items-center gap-3">
+    <button id="torch-btn" onclick="toggleTorch()" class="btn hidden !px-4 shrink-0"><i class="fa-solid fa-bolt"></i>Flash</button>
+    <div id="zoom-row" class="hidden flex-1 flex items-center gap-2 text-xs text-slate-400"><i class="fa-solid fa-magnifying-glass-plus"></i><input type="range" id="zoom-range" oninput="setZoom(this.value)"></div>
+   </div>
+   <div class="grid grid-cols-3 gap-3">
+    <button onclick="stopCamera()" class="btn">Annulla</button>
+    <button onclick="captureCameraPhoto()" class="btn-p col-span-2 !py-4 text-sm"><i class="fa-solid fa-circle-dot"></i>Scatta</button>
    </div>
   </div>
-  <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-   <button id="start-camera-btn" onclick="startCamera()" class="btn !bg-slate-700"><i class="fa-solid fa-video"></i>Avvia fotocamera</button>
-   <button id="capture-photo-btn" onclick="captureCameraPhoto()" class="btn-p hidden"><i class="fa-solid fa-circle-dot"></i>Scatta fotografia</button>
-   <label class="btn"><i class="fa-solid fa-image"></i>Carica foto / galleria<input type="file" id="file-input" accept="image/*" class="hidden" onchange="handleFileUpload(event)"></label>
-  </div>
-  <div class="p-3 bg-amber-500/10 border border-amber-500/20 rounded-lg text-left text-[11px] text-amber-200/90 leading-tight">
-   <i class="fa-solid fa-lightbulb text-amber-400 mr-1"></i><strong>Consiglio:</strong> usa uno sfondo scuro con luce radente per evidenziare l'anello opaco di precipitazione.
+
+  <div class="p-3 bg-amber-500/10 border border-amber-500/20 rounded-lg text-left text-[11px] text-amber-200/90 leading-snug space-y-1">
+   <div><i class="fa-solid fa-ruler text-amber-400 mr-1"></i><strong>Scala:</strong> inquadra nella stessa foto un riferimento noto (righello, carta di credito o moneta da 1/2 €) appoggiato sullo stesso piano della piastra.</div>
+   <div><i class="fa-solid fa-arrows-to-dot text-amber-400 mr-1"></i><strong>Posizione:</strong> tieni il telefono parallelo alla piastra, per evitare distorsioni prospettiche.</div>
+   <div><i class="fa-solid fa-lightbulb text-amber-400 mr-1"></i><strong>Luce:</strong> sfondo scuro e luce radente evidenziano l’anello opaco; evita riflessi e ombre della mano.</div>
   </div>
  </div>
  <div class="flex gap-3">
@@ -110,47 +140,60 @@ canvas{touch-action:none}
 </section>
 
 <!-- STEP 3 -->
-<section id="step-3" class="hidden space-y-4">
- <div class="bg-slate-800/90 border border-slate-700 rounded-xl p-3 space-y-3">
-  <div class="flex items-center justify-between">
-   <span class="text-xs font-semibold flex items-center gap-1.5"><i class="fa-solid fa-ruler-combined text-teal-400"></i>Strumenti di misurazione</span>
-   <span id="scale-badge" class="text-[11px] px-2 py-0.5 bg-slate-900 text-amber-300 rounded border border-amber-500/40">Scala non calibrata</span>
-  </div>
-  <div class="grid grid-cols-2 gap-2 text-xs">
-   <button onclick="runAutoDetection()" class="py-2 bg-teal-600/20 hover:bg-teal-600/30 border border-teal-500/40 text-teal-300 font-medium rounded-lg flex items-center justify-center gap-1.5"><i class="fa-solid fa-wand-magic-sparkles"></i>Auto-rileva anello</button>
-   <button onclick="toggleCalibrationMode()" class="py-2 bg-slate-700 hover:bg-slate-600 text-slate-200 font-medium rounded-lg flex items-center justify-center gap-1.5"><i class="fa-solid fa-ruler"></i><span id="calib-btn-text">Imposta scala (mm)</span></button>
-  </div>
+<section id="step-3" class="hidden space-y-3 pb-28">
+ <div id="measure-tools" class="grid grid-cols-2 gap-2">
+  <button onclick="runAutoDetection()" class="tool t"><i class="fa-solid fa-wand-magic-sparkles"></i>Auto-rileva anello</button>
+  <button onclick="enterCalib()" class="tool"><i class="fa-solid fa-ruler"></i>Imposta scala</button>
  </div>
 
- <div class="relative bg-slate-950 rounded-xl overflow-hidden border border-slate-800 shadow-2xl min-h-[320px] flex items-center justify-center">
-  <canvas id="analysis-canvas" class="max-w-full h-auto cursor-crosshair rounded-xl"></canvas>
-  <div class="absolute bottom-3 left-3 right-3 glass p-2.5 rounded-xl border border-slate-700/60 flex items-center justify-between text-xs">
-   <div class="flex items-center gap-3">
-    <div><span class="text-slate-400 block text-[10px]">Diametro d</span><span id="m-d" class="font-bold text-teal-400 text-sm">0.00 mm</span></div>
-    <div class="border-l border-slate-700 pl-3"><span class="text-slate-400 block text-[10px]">d²</span><span id="m-d2" class="font-semibold">0.00 mm²</span></div>
-   </div>
-   <div class="flex gap-1.5">
-    <button onclick="adjustDiameter(-0.1)" class="w-8 h-8 rounded-lg bg-slate-700 hover:bg-slate-600 font-bold" title="-0.1 mm">-</button>
-    <button onclick="adjustDiameter(0.1)" class="w-8 h-8 rounded-lg bg-slate-700 hover:bg-slate-600 font-bold" title="+0.1 mm">+</button>
-   </div>
-  </div>
+ <div class="flex items-center justify-between gap-2 text-[11px] text-slate-400">
+  <span id="canvas-hint">Trascina il bordo per ridimensionare, l’interno per spostare.</span>
+  <button id="scale-badge" onclick="enterCalib()" class="shrink-0 text-[11px] px-2.5 py-1.5 bg-slate-900 text-amber-300 rounded border border-amber-500/40">Scala non calibrata</button>
  </div>
 
- <div class="p-3 bg-slate-800/80 rounded-xl border border-teal-500/40 text-xs space-y-2">
-  <div class="flex justify-between items-center font-medium">
-   <span>Riferimento per la scala:</span>
-   <select id="scale-ref-type" onchange="updateScaleReference()" class="bg-slate-900 border border-slate-700 rounded px-2 py-1">
-    <option value="custom">Righello / riferimento noto</option>
+ <div class="relative bg-slate-950 rounded-xl overflow-hidden border border-slate-800 shadow-2xl min-h-[260px] flex items-center justify-center">
+  <canvas id="analysis-canvas" class="block max-w-full h-auto rounded-xl"></canvas>
+ </div>
+
+ <div id="calib-panel" class="hidden card !p-4 space-y-3 !border-sky-500/50">
+  <div class="text-sm font-semibold text-sky-300 flex items-center gap-2"><i class="fa-solid fa-ruler-horizontal"></i>Calibrazione della scala</div>
+  <div>
+   <label class="block text-xs text-slate-300 mb-1">Riferimento presente nella foto</label>
+   <select id="scale-ref-type" onchange="updateScaleReference()" class="inp">
+    <option value="custom">Righello / tratto noto (mm)</option>
+    <option value="card">Carta di credito: lato lungo (85,60 mm)</option>
+    <option value="cardS">Carta di credito: lato corto (53,98 mm)</option>
+    <option value="e1">Moneta 1 € (23,25 mm)</option>
+    <option value="e2">Moneta 2 € (25,75 mm)</option>
+    <option value="c50">Moneta 50 cent (24,25 mm)</option>
    </select>
   </div>
-  <div id="custom-scale-box" class="flex items-center gap-2">
-   <span class="text-slate-400">Lunghezza del tratto (mm):</span>
-   <input type="number" id="custom-scale-mm" value="10" step="0.5" min="0.1" oninput="recalcScale()" class="w-20 bg-slate-900 border border-slate-700 rounded px-2 py-1 text-center">
+  <div class="flex items-center gap-3">
+   <label for="custom-scale-mm" class="text-xs text-slate-300">Lunghezza (mm)</label>
+   <input type="number" inputmode="decimal" id="custom-scale-mm" value="10" step="0.01" min="0.1" oninput="recalcScale()" class="inp !w-28 text-center">
   </div>
-  <p class="text-[11px] text-slate-400">Inquadra un righello in mm accanto alla piastra, premi «Imposta scala», trascina i punti blu agli estremi di un tratto noto, scrivi la sua lunghezza qui sopra e premi «Salva calibrazione». Il foglietto non indica il diametro del pozzetto, quindi non è usato come riferimento.</p>
+  <p class="text-[11px] text-slate-400 leading-snug">Porta i due punti blu agli estremi opposti del riferimento (per le monete passando dal centro). La lente d’ingrandimento ti aiuta a posizionarli con precisione. Il foglietto non indica il diametro del pozzetto, quindi non è usato come riferimento.</p>
+  <p id="calib-info" class="text-xs font-mono text-sky-300"></p>
+  <div class="grid grid-cols-2 gap-3">
+   <button onclick="cancelCalib()" class="btn">Annulla</button>
+   <button onclick="saveCalib()" class="btn-p"><i class="fa-solid fa-check"></i>Salva scala</button>
+  </div>
  </div>
 
- <div class="flex gap-3">
+ <div id="measure-readout" class="card !p-3 space-y-3">
+  <div class="flex items-end justify-between">
+   <div><span class="text-slate-400 block text-[10px]">Diametro d</span><span id="m-d" class="font-bold text-teal-400 text-2xl">0.00 mm</span></div>
+   <div class="text-right"><span class="text-slate-400 block text-[10px]">d²</span><span id="m-d2" class="font-semibold">0.00 mm²</span></div>
+  </div>
+  <div class="grid grid-cols-4 gap-2">
+   <button class="step" onclick="adjustDiameter(-0.1)">−0,1</button>
+   <button class="step" onclick="adjustDiameter(-0.02)">−0,02</button>
+   <button class="step" onclick="adjustDiameter(0.02)">+0,02</button>
+   <button class="step" onclick="adjustDiameter(0.1)">+0,1</button>
+  </div>
+ </div>
+
+ <div id="step3-nav" class="bar fixed inset-x-0 bottom-0 z-40 glass border-t border-slate-700 px-4 pt-3 flex gap-3">
   <button onclick="switchStep(2)" class="btn w-1/3"><i class="fa-solid fa-arrow-left"></i>Foto</button>
   <button onclick="switchStep(4)" class="btn-p w-2/3">Calcola concentrazione <i class="fa-solid fa-calculator"></i></button>
  </div>
@@ -191,8 +234,8 @@ canvas{touch-action:none}
 </section>
 </main>
 
-<div id="toast" class="fixed bottom-5 left-1/2 -translate-x-1/2 bg-slate-800 px-4 py-2.5 rounded-xl border border-slate-700 shadow-2xl text-xs font-medium flex items-center gap-2 opacity-0 pointer-events-none transition-all duration-300 z-50">
- <i id="toast-icon" class="fa-solid fa-circle-check text-teal-400"></i><span id="toast-msg"></span>
+<div id="toast" class="fixed left-1/2 -translate-x-1/2 bg-slate-800 px-4 py-2.5 rounded-xl border border-slate-700 shadow-2xl text-xs font-medium flex items-center gap-2 opacity-0 pointer-events-none transition-all duration-300 z-50 max-w-[92vw]">
+ <span id="toast-icon" class="text-teal-400">✓</span><span id="toast-msg"></span>
 </div>
 
 <script>
@@ -227,20 +270,19 @@ const PRESETS = [
 ].map(([id,code,name,gel,dil,color,col,normal]) => ({id,code:'Cod. '+code,name,gelColor:gel,dilution:dil,unit:'mg/dL',color,normal,points:PI_ROWS.map(r=>({d:r[0],conc:r[col]}))}));
 
 let currentStep = 1, preset = PRESETS[0];
-let img = new Image(), imageLoaded = false, stream = null;
+let img = new Image(), imageLoaded = false, stream = null, track = null, torchOn = false;
 let canvas, ctx;
-let pxPerMm = 20, geometryInit = false, scaleCalibrated = false;
+let pxPerMm = 20, calibPx = 20, geometryInit = false, scaleCalibrated = false;
 let center = {x:200,y:200}, ringR = 70, wellR = 40;
 let calibMode = false, calibPts = [{x:100,y:100},{x:200,y:100}];
-let drag = null; // 'center' | 'radius' | 0 | 1 (punti calibrazione)
-
-function clone(o){ return JSON.parse(JSON.stringify(o)); }
+let drag = null, ptr = null, off = {x:0,y:0}; // drag: 'center' | 'radius' | 0 | 1 (punti calibrazione)
+const REFS = {custom:null, card:85.6, cardS:53.98, e1:23.25, e2:25.75, c50:24.25};
 
 window.addEventListener('DOMContentLoaded', () => {
   ['Configura','Acquisisci','Misura','Risultato'].forEach((label,i) => {
     const b = document.createElement('button');
     b.id = 'tab-'+(i+1); b.className = 'tab';
-    b.innerHTML = `<span class="w-5 h-5 rounded-full bg-slate-700 text-slate-300 flex items-center justify-center text-xs font-bold">${i+1}</span><span class="hidden sm:inline">${label}</span>`;
+    b.innerHTML = `<span class="w-6 h-6 rounded-full bg-slate-700 text-slate-300 flex items-center justify-center text-xs font-bold">${i+1}</span><span class="hidden sm:inline">${label}</span>`;
     b.onclick = () => switchStep(i+1);
     $('tabs').appendChild(b);
   });
@@ -248,7 +290,7 @@ window.addEventListener('DOMContentLoaded', () => {
   PRESETS.forEach(p => sel.add(new Option(`${p.code} - ${p.name}`, p.id)));
   sel.onchange = e => { preset = PRESETS.find(p => p.id === e.target.value); renderPreset(); };
   $('toggle-curve-btn').onclick = () => { $('curve-panel').classList.toggle('hidden'); $('curve-chevron').classList.toggle('rotate-180'); };
-  $('reset-app-btn').onclick = () => { if (confirm('Azzerare la sessione e ripartire dall\'inizio?')) { stopCamera(); location.reload(); } };
+  $('reset-app-btn').onclick = () => { if (confirm('Azzerare la sessione e ripartire dall’inizio?')) { stopCamera(); location.reload(); } };
   renderPreset(); initCanvas(); switchStep(1);
   window.addEventListener('resize', () => { if (currentStep === 3) resizeAndDraw(); });
 });
@@ -268,6 +310,7 @@ function switchStep(n){
   if (n >= 3 && !imageLoaded) return showToast('Carica o scatta prima una foto della piastra.','warning');
   if (n === 4 && !calculate()) return;
   if (n !== 2) stopCamera();
+  if (n !== 3 && calibMode) cancelCalib();
   currentStep = n;
   for (let i=1;i<=4;i++){
     $('step-'+i).classList.toggle('hidden', i!==n);
@@ -280,25 +323,61 @@ function newMeasurement(){ imageLoaded = false; $('to-measure-btn').disabled = t
 
 /* ---------- STEP 2: FOTOCAMERA / FILE ---------- */
 async function startCamera(){
+  startTilt(); // deve partire dal gesto dell’utente (iOS)
   try {
-    stream = await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'},width:{ideal:1920},height:{ideal:1080}}});
-    const v = $('webcam-feed'); v.srcObject = stream;
-    v.classList.remove('hidden'); $('camera-placeholder').classList.add('hidden'); $('camera-overlay').classList.remove('hidden');
-    $('capture-photo-btn').classList.remove('hidden'); $('start-camera-btn').classList.add('hidden');
-  } catch(err){ showToast('Fotocamera non disponibile (serve HTTPS e permessi): '+err.message,'error'); }
+    stream = await navigator.mediaDevices.getUserMedia({audio:false,video:{facingMode:{ideal:'environment'},width:{ideal:3840},height:{ideal:2160}}});
+    track = stream.getVideoTracks()[0];
+    $('webcam-feed').srcObject = stream;
+    $('camera-wrap').classList.remove('hidden'); $('pick-box').classList.add('hidden');
+    const caps = track.getCapabilities ? track.getCapabilities() : {};
+    $('torch-btn').classList.toggle('hidden', !caps.torch);
+    const z = $('zoom-range');
+    $('zoom-row').classList.toggle('hidden', !caps.zoom);
+    if (caps.zoom){ z.min = caps.zoom.min; z.max = caps.zoom.max; z.step = caps.zoom.step || 0.1; z.value = caps.zoom.min; }
+  } catch(err){ window.removeEventListener('deviceorientation', onTilt); showToast('Anteprima non disponibile: usa «Scatta con la fotocamera».','warning'); }
 }
 function stopCamera(){
-  if (stream){ stream.getTracks().forEach(t=>t.stop()); stream = null; }
-  $('webcam-feed').classList.add('hidden'); $('camera-placeholder').classList.remove('hidden'); $('camera-overlay').classList.add('hidden');
-  $('capture-photo-btn').classList.add('hidden'); $('start-camera-btn').classList.remove('hidden');
+  if (stream){ stream.getTracks().forEach(t=>t.stop()); stream = null; track = null; }
+  torchOn = false; $('torch-btn').classList.remove('torch-on');
+  window.removeEventListener('deviceorientation', onTilt);
+  $('tilt-badge').className = 'hidden';
+  $('camera-wrap').classList.add('hidden'); $('pick-box').classList.remove('hidden');
+}
+function toggleTorch(){
+  if (!track) return;
+  torchOn = !torchOn;
+  track.applyConstraints({advanced:[{torch:torchOn}]}).catch(() => { torchOn = false; showToast('Flash non disponibile.','warning'); });
+  $('torch-btn').classList.toggle('torch-on', torchOn);
+}
+function setZoom(v){ if (track) track.applyConstraints({advanced:[{zoom:+v}]}).catch(()=>{}); }
+function startTilt(){
+  try {
+    const D = window.DeviceOrientationEvent;
+    if (D && D.requestPermission) D.requestPermission().then(r => { if (r === 'granted') window.addEventListener('deviceorientation', onTilt); }).catch(()=>{});
+    else window.addEventListener('deviceorientation', onTilt);
+  } catch(e){}
+}
+function onTilt(e){
+  if (e.beta == null || e.gamma == null) return;
+  const t = Math.max(Math.abs(e.beta), Math.abs(e.gamma)), ok = t < 4;
+  const b = $('tilt-badge');
+  b.textContent = ok ? '✓ Parallelo alla piastra' : `Inclinazione ${t.toFixed(0)}°`;
+  b.className = 'absolute top-2 left-2 text-xs px-2.5 py-1 rounded-full font-semibold ' + (ok ? 'bg-emerald-500/90 text-white' : 'bg-amber-500/90 text-slate-900');
 }
 function setImage(src, msg){
-  const im = new Image();
-  im.onload = () => {
-    img = im; imageLoaded = true; geometryInit = false; scaleCalibrated = false; calibMode = false;
-    $('calib-btn-text').textContent = 'Imposta scala (mm)';
-    stopCamera(); $('to-measure-btn').disabled = false; showToast(msg); switchStep(3);
+  const done = im => {
+    const m = Math.max(im.width, im.height); let out = im;
+    if (m > 2400){ // evita canvas enormi su mobile
+      const k = 2400/m, c = document.createElement('canvas');
+      c.width = Math.round(im.width*k); c.height = Math.round(im.height*k);
+      c.getContext('2d').drawImage(im,0,0,c.width,c.height); out = c;
+    }
+    img = out; imageLoaded = true; geometryInit = false; scaleCalibrated = false; calibMode = false; drag = null; ptr = null;
+    setCalibUI(false); stopCamera(); $('to-measure-btn').disabled = false; showToast(msg); switchStep(3);
   };
+  if (typeof src !== 'string') return done(src);
+  const im = new Image();
+  im.onload = () => { if (src.startsWith('blob:')) URL.revokeObjectURL(src); done(im); };
   im.onerror = () => showToast('Immagine non valida.','error');
   im.src = src;
 }
@@ -306,13 +385,11 @@ function captureCameraPhoto(){
   const v = $('webcam-feed'), c = document.createElement('canvas');
   c.width = v.videoWidth || 1280; c.height = v.videoHeight || 720;
   c.getContext('2d').drawImage(v,0,0,c.width,c.height);
-  setImage(c.toDataURL('image/jpeg',0.92),'Foto acquisita.');
+  setImage(c,'Foto acquisita.');
 }
 function handleFileUpload(e){
   const f = e.target.files[0]; if (!f) return;
-  const r = new FileReader();
-  r.onload = ev => setImage(ev.target.result,'Immagine caricata.');
-  r.readAsDataURL(f);
+  setImage(URL.createObjectURL(f),'Immagine caricata.');
   e.target.value = ''; // permette di ricaricare lo stesso file
 }
 
@@ -321,24 +398,24 @@ function initCanvas(){
   canvas = $('analysis-canvas'); ctx = canvas.getContext('2d');
   canvas.addEventListener('pointerdown', onDown);
   canvas.addEventListener('pointermove', onMove);
-  ['pointerup','pointercancel'].forEach(t => window.addEventListener(t, () => { drag = null; }));
+  ['pointerup','pointercancel'].forEach(t => window.addEventListener(t, () => { if (drag !== null){ drag = null; ptr = null; redraw(); } }));
 }
 function resizeAndDraw(){
   if (!imageLoaded) return;
   const oldW = canvas.width;
-  const w = Math.max(200, canvas.parentElement.clientWidth - 10);
-  const s = w / img.width;
-  canvas.width = Math.round(img.width * s); canvas.height = Math.round(img.height * s);
+  const maxW = Math.max(200, canvas.parentElement.clientWidth - 2), maxH = Math.max(260, window.innerHeight*0.6);
+  const s = Math.min(maxW/img.width, maxH/img.height);
+  canvas.width = Math.round(img.width*s); canvas.height = Math.round(img.height*s);
   if (!geometryInit){
-    center = {x:canvas.width/2, y:canvas.height/2};
-    ringR = Math.min(canvas.width, canvas.height) * 0.2;
-    wellR = ringR * 0.4;
-    pxPerMm = (wellR*2)/4; // provvisoria: l'utente deve calibrare
-    calibPts = [{x:center.x-wellR,y:center.y},{x:center.x+wellR,y:center.y}];
-    geometryInit = true;
+    const W = canvas.width, H = canvas.height;
+    center = {x:W/2, y:H*0.45};
+    ringR = Math.min(W,H)*0.2; wellR = ringR*0.4;
+    pxPerMm = (wellR*2)/4; // provvisoria: l’utente deve calibrare
+    calibPts = [{x:W*0.25,y:H*0.86},{x:W*0.75,y:H*0.86}];
+    geometryInit = true; recalcScale();
   } else if (oldW && oldW !== canvas.width){
     const k = canvas.width / oldW;
-    center.x*=k; center.y*=k; ringR*=k; wellR*=k; pxPerMm*=k;
+    center.x*=k; center.y*=k; ringR*=k; wellR*=k; pxPerMm*=k; calibPx*=k;
     calibPts.forEach(p => { p.x*=k; p.y*=k; });
   }
   redraw();
@@ -348,43 +425,72 @@ function redraw(){
   if (!imageLoaded) return;
   drawImageOnly();
   calibMode ? drawCalib() : drawMeasure();
-  updateDisplay();
+  drawLoupe(); updateDisplay();
 }
 function dot(x,y,r,fill,stroke){ ctx.beginPath(); ctx.arc(x,y,r,0,2*Math.PI); ctx.fillStyle=fill; ctx.fill(); ctx.strokeStyle=stroke; ctx.lineWidth=2; ctx.stroke(); }
-function drawMeasure(){
+function drawMeasure(lw=2.5, handles=true){
   const col = preset.color;
   ctx.beginPath(); ctx.arc(center.x,center.y,ringR,0,2*Math.PI);
-  ctx.strokeStyle=col; ctx.lineWidth=2.5; ctx.stroke(); ctx.fillStyle=col+'20'; ctx.fill();
+  ctx.strokeStyle=col; ctx.lineWidth=lw; ctx.stroke();
+  if (!handles) return;
+  ctx.fillStyle=col+'20'; ctx.fill();
   dot(center.x,center.y,6,'#fff','#0f172a');
-  dot(center.x+ringR,center.y,8,col,'#fff');
+  dot(center.x+ringR,center.y,11,col,'#fff');
 }
-function drawCalib(){
-  const [a,b] = calibPts;
+function drawCalib(lw=3, handles=true){
+  const [a,b] = calibPts, L = Math.hypot(b.x-a.x,b.y-a.y) || 1, nx = -(b.y-a.y)/L, ny = (b.x-a.x)/L, t = handles ? 12 : 4;
   ctx.beginPath(); ctx.moveTo(a.x,a.y); ctx.lineTo(b.x,b.y);
-  ctx.strokeStyle='#38bdf8'; ctx.lineWidth=3; ctx.stroke();
-  calibPts.forEach(p => dot(p.x,p.y,8,'#0284c7','#fff'));
+  [a,b].forEach(p => { ctx.moveTo(p.x-nx*t,p.y-ny*t); ctx.lineTo(p.x+nx*t,p.y+ny*t); });
+  ctx.strokeStyle='#38bdf8'; ctx.lineWidth=lw; ctx.stroke();
+  if (!handles) return;
+  calibPts.forEach(p => { dot(p.x,p.y,13,'rgba(2,132,199,.35)','#fff'); dot(p.x,p.y,2.5,'#fff','#fff'); });
+}
+// Lente d’ingrandimento: mostra il punto trascinato sopra il dito
+function dragPoint(){
+  if (drag === 0 || drag === 1) return calibPts[drag];
+  if (drag === 'center') return center;
+  const dx = ptr.x-center.x, dy = ptr.y-center.y, L = Math.hypot(dx,dy) || 1;
+  return {x:center.x+dx/L*ringR, y:center.y+dy/L*ringR};
+}
+function drawLoupe(){
+  if (drag === null || !ptr) return;
+  const Z = 3, R = Math.max(46, Math.min(canvas.width,canvas.height)*0.17), t = dragPoint();
+  const lx = Math.min(Math.max(ptr.x,R+4), canvas.width-R-4);
+  let ly = ptr.y-R-70; if (ly < R+4) ly = Math.min(ptr.y+R+70, canvas.height-R-4);
+  ctx.save(); ctx.beginPath(); ctx.arc(lx,ly,R,0,2*Math.PI); ctx.clip();
+  ctx.fillStyle='#000'; ctx.fillRect(lx-R,ly-R,2*R,2*R);
+  ctx.translate(lx,ly); ctx.scale(Z,Z); ctx.translate(-t.x,-t.y);
+  ctx.drawImage(img,0,0,canvas.width,canvas.height);
+  calibMode ? drawCalib(1.2/Z,false) : drawMeasure(1.2/Z,false);
+  ctx.restore();
+  ctx.beginPath(); ctx.arc(lx,ly,R,0,2*Math.PI); ctx.strokeStyle='#fff'; ctx.lineWidth=3; ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(lx-R*.3,ly); ctx.lineTo(lx+R*.3,ly); ctx.moveTo(lx,ly-R*.3); ctx.lineTo(lx,ly+R*.3);
+  ctx.strokeStyle='rgba(255,255,255,.7)'; ctx.lineWidth=1; ctx.stroke();
 }
 function pointerPos(e){
   const r = canvas.getBoundingClientRect();
   return {x:(e.clientX-r.left)*canvas.width/r.width, y:(e.clientY-r.top)*canvas.height/r.height};
 }
 function onDown(e){
-  e.preventDefault(); const p = pointerPos(e);
-  const hit = 28 * (canvas.width / canvas.getBoundingClientRect().width); // soglia in px canvas
+  e.preventDefault(); const p = pointerPos(e); ptr = p; drag = null;
+  const hit = 30 * canvas.width / canvas.getBoundingClientRect().width; // 30 px CSS
   if (calibMode){
-    const d = calibPts.map(q => Math.hypot(p.x-q.x,p.y-q.y));
-    const i = d[0] <= d[1] ? 0 : 1;
-    if (d[i] < hit) drag = i;
-  } else if (Math.hypot(p.x-(center.x+ringR),p.y-center.y) < hit) drag = 'radius';
-  else if (Math.hypot(p.x-center.x,p.y-center.y) < Math.max(hit,ringR)) drag = 'center';
+    const d = calibPts.map(q => Math.hypot(p.x-q.x,p.y-q.y)), i = d[0] <= d[1] ? 0 : 1;
+    if (d[i] < hit*1.6){ drag = i; off = {x:calibPts[i].x-p.x, y:calibPts[i].y-p.y}; }
+  } else {
+    const dc = Math.hypot(p.x-center.x,p.y-center.y);
+    if (Math.abs(dc-ringR) < hit){ drag = 'radius'; off = {x:ringR-dc, y:0}; }
+    else if (dc < ringR){ drag = 'center'; off = {x:center.x-p.x, y:center.y-p.y}; }
+  }
   if (drag !== null) canvas.setPointerCapture(e.pointerId);
+  redraw();
 }
 function onMove(e){
   if (drag === null) return;
-  e.preventDefault(); const p = pointerPos(e);
-  if (drag === 0 || drag === 1){ calibPts[drag] = p; recalcScale(); }
-  else if (drag === 'center') center = p;
-  else ringR = Math.max(10, Math.hypot(p.x-center.x,p.y-center.y));
+  e.preventDefault(); const p = pointerPos(e); ptr = p;
+  if (drag === 0 || drag === 1){ calibPts[drag] = {x:p.x+off.x, y:p.y+off.y}; recalcScale(); }
+  else if (drag === 'center') center = {x:p.x+off.x, y:p.y+off.y};
+  else ringR = Math.max(10, Math.hypot(p.x-center.x,p.y-center.y) + off.x);
   redraw();
 }
 function adjustDiameter(mm){ ringR = Math.max(10, ringR + (mm/2)*pxPerMm); redraw(); }
@@ -393,8 +499,8 @@ function updateDisplay(){
   const d = diameterMm();
   $('m-d').textContent = d.toFixed(2)+' mm'; $('m-d2').textContent = (d*d).toFixed(2)+' mm²';
   const b = $('scale-badge');
-  b.textContent = scaleCalibrated ? `Scala: ${pxPerMm.toFixed(1)} px/mm` : 'Scala non calibrata';
-  b.className = 'text-[11px] px-2 py-0.5 bg-slate-900 rounded border ' + (scaleCalibrated ? 'text-teal-300 border-teal-500/30' : 'text-amber-300 border-amber-500/40');
+  b.textContent = scaleCalibrated ? `Scala: ${pxPerMm.toFixed(1)} px/mm ✓` : 'Scala non calibrata · tocca';
+  b.className = 'shrink-0 text-[11px] px-2.5 py-1.5 bg-slate-900 rounded border ' + (scaleCalibrated ? 'text-teal-300 border-teal-500/30' : 'text-amber-300 border-amber-500/40');
 }
 
 /* ---------- RILEVAMENTO AUTOMATICO ---------- */
@@ -425,28 +531,35 @@ function runAutoDetection(){
 }
 
 /* ---------- CALIBRAZIONE SCALA ---------- */
-function toggleCalibrationMode(){
-  calibMode = !calibMode;
-  if (calibMode){
-    $('calib-btn-text').textContent = 'Salva calibrazione';
-    showToast('Porta i punti blu agli estremi del riferimento noto.');
-  } else {
-    scaleCalibrated = true; recalcScale();
-    $('calib-btn-text').textContent = 'Imposta scala (mm)';
-    showToast('Scala impostata.');
-  }
-  redraw();
+function setCalibUI(on){
+  ['calib-panel'].forEach(id => $(id).classList.toggle('hidden', !on));
+  ['measure-tools','measure-readout','step3-nav'].forEach(id => $(id).classList.toggle('hidden', on));
+  $('canvas-hint').textContent = on ? 'Trascina i due punti blu agli estremi del riferimento.' : 'Trascina il bordo per ridimensionare, l’interno per spostare.';
 }
+function enterCalib(){
+  if (!imageLoaded) return;
+  calibMode = true; setCalibUI(true); updateScaleReference(); redraw();
+  setTimeout(() => $('calib-panel').scrollIntoView({behavior:'smooth',block:'nearest'}), 80);
+}
+function saveCalib(){
+  const mm = parseFloat($('custom-scale-mm').value);
+  const dist = Math.hypot(calibPts[1].x-calibPts[0].x, calibPts[1].y-calibPts[0].y);
+  if (!(mm > 0)) return showToast('Inserisci la lunghezza in mm.','warning');
+  if (dist < 20) return showToast('I due punti sono troppo vicini.','warning');
+  pxPerMm = dist/mm; scaleCalibrated = true; calibMode = false; setCalibUI(false); redraw();
+  showToast('Scala salvata.');
+}
+function cancelCalib(){ calibMode = false; setCalibUI(false); redraw(); }
 function updateScaleReference(){
-  $('custom-scale-box').classList.toggle('hidden', $('scale-ref-type').value !== 'custom');
-  recalcScale(); redraw();
+  const mm = REFS[$('scale-ref-type').value], inp = $('custom-scale-mm');
+  if (mm){ inp.value = mm; inp.readOnly = true; } else inp.readOnly = false;
+  recalcScale();
 }
 function recalcScale(){
   const dist = Math.hypot(calibPts[1].x-calibPts[0].x, calibPts[1].y-calibPts[0].y);
-  const t = $('scale-ref-type').value;
-  const mm = parseFloat($('custom-scale-mm').value) || 10;
-  if (dist > 5 && mm > 0) pxPerMm = dist/mm;
-  updateDisplay();
+  const mm = parseFloat($('custom-scale-mm').value);
+  if (dist > 5 && mm > 0) calibPx = dist/mm;
+  $('calib-info').textContent = mm > 0 ? `Tratto: ${dist.toFixed(0)} px → ${calibPx.toFixed(1)} px/mm` : 'Inserisci la lunghezza in mm';
 }
 
 /* ---------- STEP 4: CALCOLO ---------- */
@@ -455,9 +568,9 @@ function calculate(){
   const pts = preset.points, d = diameterMm(), d2 = d*d, lo = pts[0], hi = pts[pts.length-1];
   const AMB='bg-amber-500/20 text-amber-400 border-amber-500/40', OK='bg-emerald-500/20 text-emerald-400 border-emerald-500/40', BAD='bg-rose-500/20 text-rose-400 border-rose-500/40';
   let conc = 0, prefix = '', cls = OK, badge = 'In range';
-  let msg = `Diametro compreso nell'intervallo della tabella del foglietto illustrativo (${lo.d}–${hi.d} mm). Valore ottenuto per interpolazione lineare su d².`;
+  let msg = `Diametro compreso nell’intervallo della tabella del foglietto illustrativo (${lo.d}–${hi.d} mm). Valore ottenuto per interpolazione lineare su d².`;
   if (d < lo.d){ prefix='< '; conc=lo.conc; cls=AMB; badge='Sotto il minimo';
-    msg = `Diametro (${d.toFixed(2)} mm) inferiore al minimo della tabella (${lo.d} mm): l'anello è difficile da misurare e il valore indicato è un limite, non una misura. Il foglietto consiglia strumenti di lettura con maggiore sensibilità.`;
+    msg = `Diametro (${d.toFixed(2)} mm) inferiore al minimo della tabella (${lo.d} mm): l’anello è difficile da misurare e il valore indicato è un limite, non una misura. Il foglietto consiglia strumenti di lettura con maggiore sensibilità.`;
   } else if (d > hi.d){ prefix='> '; conc=hi.conc; cls=BAD; badge='Sopra il massimo';
     msg = `Diametro (${d.toFixed(2)} mm) superiore al massimo della tabella (${hi.d} mm): anello non misurabile e valore indicato come limite. Il foglietto consiglia di diluire il campione e ripetere.`;
   } else {
@@ -495,7 +608,9 @@ function copyResults(){
 let toastTimer;
 function showToast(msg, type='info'){
   $('toast-msg').textContent = msg;
-  $('toast-icon').className = type==='warning' ? 'fa-solid fa-triangle-exclamation text-amber-400' : type==='error' ? 'fa-solid fa-circle-xmark text-rose-400' : 'fa-solid fa-circle-check text-teal-400';
+  const ti = $('toast-icon');
+  ti.textContent = type==='warning' ? '⚠' : type==='error' ? '✕' : '✓';
+  ti.className = type==='warning' ? 'text-amber-400' : type==='error' ? 'text-rose-400' : 'text-teal-400';
   const t = $('toast'); t.classList.remove('opacity-0','pointer-events-none');
   clearTimeout(toastTimer); toastTimer = setTimeout(()=>t.classList.add('opacity-0','pointer-events-none'), 3200);
 }
